@@ -905,6 +905,7 @@ impl Server {
                 "__ASSETS_PREFIX__",
                 &format!("{}{}", self.args.uri_prefix, self.assets_prefix),
             )
+            .replace("__VERSION__", env!("CARGO_PKG_VERSION"))
             .replace("__INDEX_DATA__", &serde_json::to_string(&data)?);
         res.headers_mut()
             .typed_insert(ContentLength(output.as_bytes().len() as u64));
@@ -1133,6 +1134,7 @@ impl Server {
                     "__ASSETS_PREFIX__",
                     &format!("{}{}", self.args.uri_prefix, self.assets_prefix),
                 )
+                .replace("__VERSION__", env!("CARGO_PKG_VERSION"))
                 .replace("__INDEX_DATA__", &serde_json::to_string(&data)?)
         };
         res.headers_mut()

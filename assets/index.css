@@ -242,6 +242,25 @@ body {
   cursor: pointer;
 }
 
+.media-player-wrapper {
+  position: sticky;
+  top: 0;
+  left: 0;
+  width: 100%;
+  background-color: white;
+}
+.media-player-wrapper > .media-container {
+  padding: 8px 10px;
+}
+.media-player-wrapper > .media-container > .media-name {
+  width: 100%;
+  text-align: left;
+  padding-bottom: 5px;
+}
+.media-player-wrapper > .media-container > .media-player {
+  width: 100%;
+}
+
 @media (min-width: 768px) {
   .path a {
     min-width: 400px;
@@ -295,5 +314,9 @@ body {
   .editor {
     background: black;
     color: white;
+  }
+
+  .media-player-wrapper {
+    background-color: #000;
   }
 }
