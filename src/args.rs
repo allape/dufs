@@ -190,6 +190,15 @@ pub fn build_cli() -> Command {
                 .value_name("path")
         )
         .arg(
+            Arg::new("preview-cache")
+                .env("DUFS_PREVIEW_CACHE")
+				.hide_env(true)
+                .long("preview-cache")
+                .help("A folder for the cache of preview relative to the served path")
+                .value_parser(value_parser!(PathBuf))
+                .value_name("path")
+        )
+        .arg(
             Arg::new("log-format")
                 .env("DUFS_LOG_FORMAT")
                 .hide_env(true)
@@ -277,6 +286,7 @@ pub struct Args {
     pub render_try_index: bool,
     pub enable_cors: bool,
     pub assets: Option<PathBuf>,
+    pub preview_cache: Option<PathBuf>,
     #[serde(deserialize_with = "deserialize_log_http")]
     #[serde(rename = "log-format")]
     pub http_logger: HttpLogger,
@@ -386,6 +396,14 @@ impl Args {
 
         if let Some(assets_path) = &args.assets {
             args.assets = Some(Args::sanitize_assets_path(assets_path)?);
+        }
+
+        if !args.path_is_file {
+            if let Some(preview_cache) = matches.get_one::<PathBuf>("preview-cache") {
+                args.preview_cache = Some(args.serve_path.join(preview_cache.clone().as_path()));
+            } else {
+                args.preview_cache = Some(args.serve_path.join(".dufs"));
+            }
         }
 
         if let Some(log_format) = matches.get_one::<String>("log-format") {

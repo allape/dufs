@@ -29,6 +29,7 @@ use hyper::{
     Method, StatusCode, Uri,
 };
 use serde::Serialize;
+use sha2::{Digest, Sha256};
 use std::borrow::Cow;
 use std::cmp::Ordering;
 use std::collections::HashMap;
@@ -36,6 +37,7 @@ use std::fs::Metadata;
 use std::io::SeekFrom;
 use std::net::SocketAddr;
 use std::path::{Component, Path, PathBuf};
+use std::process::Command;
 use std::sync::atomic::{self, AtomicBool};
 use std::sync::Arc;
 use std::time::SystemTime;
@@ -306,6 +308,9 @@ impl Server {
                             .await?;
                     } else if query_params.contains_key("view") {
                         self.handle_edit_file(path, DataKind::View, head_only, user, &mut res)
+                            .await?;
+                    } else if query_params.contains_key("preview") {
+                        self.handle_preview(path, headers, &mut res)
                             .await?;
                     } else {
                         self.handle_send_file(path, headers, head_only, &mut res)
@@ -761,6 +766,49 @@ impl Server {
         } else {
             Ok(false)
         }
+    }
+
+    async fn handle_preview(
+        &self,
+        path: &Path,
+        headers: &HeaderMap<HeaderValue>,
+        res: &mut Response,
+    ) -> Result<()> {
+        match self.args.preview_cache.as_ref() {
+            Some(preview_cache) => {
+                fs::create_dir_all(preview_cache).await?;
+
+                let full_path = path.to_str().unwrap();
+                let ext = path.extension().unwrap_or_default().to_str().unwrap_or("");
+                let hash = Sha256::digest(full_path.as_bytes());
+                let hash = hex::encode(hash);
+
+                let preview_file_path = preview_cache.join(format!("{}.{}", hash, ext));
+
+                let cmd = Command::new("ffmpeg")
+                .arg("-i")
+                .arg(full_path)
+                .arg("-fs")
+                .arg("100KB")
+                .arg(preview_file_path.clone().to_str().unwrap())
+                .output();
+
+                match cmd {
+                    Ok(output) => {
+                        debug!("ffmpeg output: {:?}", output);
+                        return self.handle_send_file(preview_file_path.as_path(), headers, false, res).await;
+                    }
+                    Err(e) => {
+                        println!("{}", e.to_string());
+                        status_not_found(res);
+                    }
+                }
+            }
+            None => {
+                *res.status_mut() = StatusCode::METHOD_NOT_ALLOWED;
+            }
+        }
+        Ok(())
     }
 
     async fn handle_send_file(
